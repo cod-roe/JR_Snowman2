@@ -1,7 +1,7 @@
 # %% [markdown]
-## ベースライン！
+## EDA！
 # =================================================
-# ベースライン作成：
+# EDA：データの確認
 
 
 # %%
@@ -38,7 +38,7 @@ import lightgbm as lgb
 # from sklearn.preprocessing import StandardScaler, MinMaxScaler, LabelEncoder, OneHotEncoder
 # import category_encoders as ce
 
-from sklearn.model_selection import StratifiedKFold, train_test_split  # , KFold
+# from sklearn.model_selection import StratifiedKFold, train_test_split , KFold
 # from sklearn.metrics import mean_squared_error,accuracy_score, roc_auc_score ,confusion_matrix
 
 
@@ -49,7 +49,7 @@ from sklearn.model_selection import StratifiedKFold, train_test_split  # , KFold
 ######################
 # serial #
 ######################
-serial_number = 0  # スプレッドシートAの番号
+serial_number = 1  # スプレッドシートAの番号
 
 ######################
 # Data #
@@ -80,13 +80,23 @@ EXP_MODEL = os.path.join(OUTPUT_EXP, "model")  # 学習済みモデル保存
 ######################
 # Dataset #
 ######################
-# target_columns = "bikes_available"
+# target_columns = "合計"
 # sub_index = "id"
 
 ######################
 # ハイパーパラメータの設定
 ######################
-
+# lgbm初期値
+params = {
+    "boosting_type": "gbdt",
+    "objective": "regression",
+    "metric": "None",
+    "learning_rate": 0.05,
+    "num_leaves": 32,
+    "n_estimators": 10000,
+    "random_state": 123,
+    "importance_type": "gain",
+}
 
 # %%
 # Utilities #
@@ -240,50 +250,53 @@ logger = logging.getLogger()
 
 # 出力表示数増やす
 # pd.set_option('display.max_rows',None)
-# pd.set_option('display.max_columns',None)
+pd.set_option('display.max_columns',None)
 
 
 # %% ファイルの読み込み
 # Load Data
 # =================================================
+#%%
 # 8 train.csv
 # train = load_data(8)
 train = pd.read_csv("../input/JR_Snowman/train.csv", encoding="shift-jis")
 
-# %%
 display(train.shape)
 display(train.info())
 display(train.head())
-display(train.describe().T)
 
+#%%
+train[train["年月日"] == "2016-01-19"]["列車番号"].nunique()
 # %%
 # out_of_service.csv
 oos = pd.read_csv("../input/JR_Snowman/out_of_service.csv", encoding="shift-jis")
-# %%
+
 display(oos.shape)
 display(oos.info())
 display(oos.head())
-display(oos.describe().T)
+
 
 # %%
 # sample_submit.csv
-sample_sub = pd.read_csv("../input/JR_Snowman/sample_submit.csv", encoding="shift-jis")
+# sample_sub = pd.read_csv("../input/JR_Snowman/sample_submit.csv", encoding="shift-jis")
 
-display(sample_sub.shape)
-display(sample_sub.info())
-display(sample_sub.head())
-display(sample_sub.describe().T)
+# display(sample_sub.shape)
+# display(sample_sub.info())
+# display(sample_sub.head())
+
 
 
 # %%
 # test.csv
 test = pd.read_csv("../input/JR_Snowman/test.csv", encoding="shift-jis")
+test = test.rename(columns={"Unnamed: 0":"id"})
 
 display(test.shape)
 display(test.info())
 display(test.head())
-display(test.describe().T)
 
+#%%
+test["列車番号"].nunique()
 # %%
 # stop_station_location.csv
 stop_loc = pd.read_csv(
@@ -292,8 +305,8 @@ stop_loc = pd.read_csv(
 
 display(stop_loc.shape)
 display(stop_loc.info())
-display(stop_loc.head())
-display(stop_loc.describe().T)
+display(stop_loc.head(8))
+# display(stop_loc.describe().T)
 
 
 # %%
@@ -305,7 +318,6 @@ tunnel_loc = pd.read_csv(
 display(tunnel_loc.shape)
 display(tunnel_loc.info())
 display(tunnel_loc.head())
-display(tunnel_loc.describe().T)
 
 
 # %%
@@ -315,7 +327,7 @@ wind_loc = pd.read_csv("../input/JR_Snowman/wind_location.csv", encoding="shift-
 display(wind_loc.shape)
 display(wind_loc.info())
 display(wind_loc.head())
-display(wind_loc.describe().T)
+
 # %%
 # snowfall_location.csv
 snow_loc = pd.read_csv(
@@ -325,31 +337,37 @@ snow_loc = pd.read_csv(
 display(snow_loc.shape)
 display(snow_loc.info())
 display(snow_loc.head())
-display(snow_loc.describe().T)
+
 # %%
 # diagram.csv
 diagram = pd.read_csv("../input/JR_Snowman/diagram.csv", encoding="shift-jis")
 
 display(diagram.shape)
 display(diagram.info())
-display(diagram.head())
+display(diagram.head(8).T)
 
 # %%
 # kanazawa_nosnow.csv
-k_nosnow = pd.read_csv("../input/JR_Snowman/kanazawa_nosnow.csv", encoding="shift-jis")
+k_nosnow = pd.read_csv("../input/JR_Snowman/kanazawa_nosnow.csv", encoding="shift-jis",header=None)
 
 display(k_nosnow.shape)
 display(k_nosnow.info())
 display(k_nosnow.head())
-display(k_nosnow.describe().T)
+#%%
+k_nosnow["k_nosnow"] = np.ones(k_nosnow.shape[0])
+k_nosnow.rename(columns={0:"列車番号"},inplace=True)
+
+k_nosnow.head()
 # %%
 # 気象庁データ（weather.csv）
 weather = pd.read_csv("../input/JR_Snowman/weather.csv", encoding="cp932")
 
 display(weather.shape)
+#%%
 display(weather.info())
+#%%
 display(weather.head())
-display(weather.describe().T)
+
 # %%
 # ■積雪深計データ（snowfall.csv）
 snowfall = pd.read_csv("../input/JR_Snowman/snowfall.csv", encoding="cp932")
@@ -357,8 +375,26 @@ snowfall = pd.read_csv("../input/JR_Snowman/snowfall.csv", encoding="cp932")
 display(snowfall.shape)
 display(snowfall.info())
 display(snowfall.head())
-display(snowfall.describe().T)
 
+#%%
+
+snowfall["yearmonth"] = snowfall["年月日時"].astype(str).apply(lambda x: x[:7])
+snowfall["yearmonth"].nunique()
+
+#%%
+snowfall["hour"] = snowfall["年月日時"].astype(str).apply(lambda x: x[11:])
+
+#%%
+snowfall["mimute"] = snowfall["年月日時"].astype(str).apply(lambda x: x[14:])
+#%%
+snowfall["mimute"].value_counts()
+
+#%%
+snowfall["hour"].tail()
+#%%
+snowfall["yearmonth"].value_counts()
+#%%
+snowfall["地域名"].value_counts()
 # %%
 # ■風速計データ 下条川.csv
 wind_01 = pd.read_csv("../input/JR_Snowman/wind_0\下条川.csv", encoding="cp932")
@@ -368,7 +404,22 @@ display(wind_01.info())
 display(wind_01.head())
 # display(wind_01.describe().T)
 
+#%%
+# ■列車データ【金沢着雪ゼロ列車】（kanazawa_nosnow.csv）のフラグを結合
+train2 = pd.merge(train,k_nosnow,on="列車番号",how="left")
 
+display(train2["k_nosnow"].sum())
+train2["k_nosnow"] = train2["k_nosnow"].fillna(0)
+display(train2["k_nosnow"].sum())
+display(train2.head())
+
+#%%
+train2.head(40)
+#%%
+train2[train2["年月日"] == "2016-01-19"]["列車番号"].value_counts()
+
+#%%
+k_nosnow["列車番号"].nunique()
 # %%
 # データセット作成
 # =================================================
@@ -450,17 +501,7 @@ def wmae_sklearn(y_true, y_pred):
     return "wmae", wmae, False  # Falseは「小さいほど良い」を意味
 
 
-# lgbm初期値
-params = {
-    "boosting_type": "gbdt",
-    "objective": "regression",
-    "metric": "None",
-    "learning_rate": 0.05,
-    "num_leaves": 32,
-    "n_estimators": 10000,
-    "random_state": 123,
-    "importance_type": "gain",
-}
+
 
 
 # %%
@@ -670,9 +711,9 @@ x_test = test[[
     # 'yearmonth'
     ]]
 #%%
-id_test = test[["Unnamed: 0","yearmonth"]]
+id_test = test[["id","yearmonth"]]
 #%%
-id_test = id_test.rename(columns={"Unnamed: 0":"id"})
+
 #%%
 id_test.head()
 # %%
